@@ -552,7 +552,7 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectN
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
         </Suspense>
-        <TreeRoot state={sceneState} />
+        {/* <TreeRoot state={sceneState} /> */}
         <Sparkles count={600} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
       </group>
 
