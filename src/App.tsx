@@ -436,7 +436,7 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Main Scene Experience ---
-const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive, pinchNdc, palmAway }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null, palmAway?: boolean }) => {
+const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectNdc, pinchActive, pinchNdc, palmAway }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, rotationLocked: boolean, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null, palmAway?: boolean }) => {
   const controlsRef = useRef<any>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
   const dragPlaneRef = useRef(new THREE.Plane());
@@ -453,9 +453,10 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive,
       const currentPhi = controlsRef.current.getPolarAngle();
       const targetPhi = Math.min(maxPhi, Math.max(minPhi, minPhi + pitchY * (maxPhi - minPhi)));
       const smoothPhi = MathUtils.damp(currentPhi, targetPhi, 3, delta);
-
-      controlsRef.current.setAzimuthalAngle(controlsRef.current.getAzimuthalAngle() + rotationSpeed);
-      controlsRef.current.setPolarAngle(smoothPhi);
+      if (!rotationLocked) {
+        controlsRef.current.setAzimuthalAngle(controlsRef.current.getAzimuthalAngle() + rotationSpeed);
+        controlsRef.current.setPolarAngle(smoothPhi);
+      }
       controlsRef.current.update();
     }
     if (pinchActive && pinchNdc && selectedIndexRef.current !== null) {
@@ -532,7 +533,7 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive,
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 8, 60]} fov={45} />
-      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} minPolarAngle={0.4} maxPolarAngle={Math.PI / 1.7} />
+      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={!rotationLocked && rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} minPolarAngle={0.4} maxPolarAngle={Math.PI / 1.7} />
 
       <color attach="background" args={['#000300']} />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
@@ -565,7 +566,7 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive,
 
 // --- Gesture Controller ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchChange, onStatus, debugMode }: any) => {
+const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchChange, onLockRotation, onStatus, debugMode }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -621,14 +622,21 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
             if (results.gestures.length > 0) {
               const name = results.gestures[0][0].categoryName; const score = results.gestures[0][0].score;
               if (score > 0.4) {
-                 if (name === "Open_Palm") onGesture("CHAOS"); if (name === "Closed_Fist") onGesture("FORMED");
+                 if (name === "Open_Palm") { onGesture("CHAOS"); onLockRotation(false); }
+                 if (name === "Closed_Fist") onGesture("FORMED");
                  if (debugMode) onStatus(`DETECTED: ${name}`);
-                 if ((name === "Thumb_Up" || name === "Pointing_Up") && score > 0.6 && results.landmarks.length > 0) {
+                 if (name === "Thumb_Up" && score > 0.6 && results.landmarks.length > 0) {
                    const lm = results.landmarks[0];
                    const thumb = lm[4];
                    const ndcX = (1 - thumb.x) * 2 - 1;
                    const ndcY = -(thumb.y * 2 - 1);
                    onSelectThumb({ x: ndcX, y: ndcY });
+                 }
+                 if (name === "Pointing_Up" && score > 0.6) {
+                   onLockRotation(true);
+                 }
+                 if (name === "Victory" && score > 0.6) {
+                   onLockRotation(true);
                  }
               }
               if (results.landmarks.length > 0) {
@@ -687,15 +695,16 @@ export default function GrandTreeApp() {
   const [pinchActive, setPinchActive] = useState<boolean>(false);
   const [pinchNdc, setPinchNdc] = useState<{ x: number, y: number } | null>(null);
   const [palmAway, setPalmAway] = useState<boolean>(false);
+  const [rotationLocked, setRotationLocked] = useState<boolean>(false);
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <Canvas dpr={[1, 2]} gl={{ toneMapping: THREE.ReinhardToneMapping }} shadows>
-            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} />
+            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} rotationLocked={rotationLocked} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} />
         </Canvas>
       </div>
-      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onStatus={setAiStatus} debugMode={debugMode} />
+      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} debugMode={debugMode} />
 
       {/* UI - Stats */}
       <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
