@@ -8,7 +8,8 @@ import {
   Float,
   Stars,
   Sparkles,
-  useTexture
+  useTexture,
+  Text
 } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -42,7 +43,7 @@ const CONFIG = {
     candyColors: ['#FF0000', '#FFFFFF']
   },
   counts: {
-    foliage: 15000,
+    foliage: 115000,
     ornaments: 100,   // 拍立得照片数量
     elements: 500,    // 圣诞元素数量
     lights: 800       // 彩灯数量
@@ -153,11 +154,18 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
         z: (Math.random() - 0.5) * 1.0
       };
       const chaosRotation = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      const captionPool = [
+        'Merry Moments', 'Holiday Magic', 'Winter Wishes', 'Joy & Peace', 'Season of Love',
+        'Warm Hugs', 'Bright Lights', 'Sweet Memories', 'Sparkling Night', 'Happy Times',
+        'Festive Cheer', 'Snowy Dreams', 'Love & Light', 'Cheers!', 'Stay Merry'
+      ];
+      const caption = captionPool[Math.floor(Math.random() * captionPool.length)];
 
       return {
         chaosPos, targetPos, scale: baseScale, weight,
         textureIndex: i % textures.length,
         borderColor,
+        caption,
         currentPos: chaosPos.clone(),
         chaosRotation,
         rotationSpeed,
@@ -221,6 +229,7 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
             <mesh geometry={borderGeometry} position={[0, -0.15, -0.01]}>
               <meshStandardMaterial color={obj.borderColor} roughness={0.9} metalness={0} side={THREE.FrontSide} />
             </mesh>
+            <Text position={[0, -0.52, 0.02]} fontSize={0.12} color="#FFFFFF" outlineWidth={0.02} outlineColor="#000000" outlineOffsetX={0.02} outlineOffsetY={-0.02} outlineBlur={0.02} maxWidth={1.05} textAlign="center" anchorX="center" anchorY="top">{obj.caption}</Text>
           </group>
           {/* 背面 */}
           <group position={[0, 0, -0.015]} rotation={[0, Math.PI, 0]}>
@@ -235,6 +244,7 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
             <mesh geometry={borderGeometry} position={[0, -0.15, -0.01]}>
               <meshStandardMaterial color={obj.borderColor} roughness={0.9} metalness={0} side={THREE.FrontSide} />
             </mesh>
+            <Text position={[0, -0.52, 0.02]} fontSize={0.12} color="#FFFFFF" outlineWidth={0.02} outlineColor="#000000" outlineOffsetX={0.02} outlineOffsetY={-0.02} outlineBlur={0.02} maxWidth={1.05} textAlign="center" anchorX="center" anchorY="top">{obj.caption}</Text>
           </group>
         </group>
       ))}
@@ -495,6 +505,20 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectN
         while (obj && !obj.userData?.type) obj = obj.parent as THREE.Object3D | null;
         if (obj && obj.userData?.type === 'photo') { idx = obj.userData.index as number; break; }
       }
+      if (idx === null) {
+        let nearestIdx: number | null = null;
+        let nearestDist = Infinity;
+        scene.traverse(o => {
+          if (o.userData?.type === 'photo') {
+            const p = new THREE.Vector3();
+            (o as THREE.Object3D).getWorldPosition(p);
+            const pndc = p.clone().project(camera);
+            const d = Math.hypot(pndc.x - ndc.x, pndc.y - ndc.y);
+            if (d < 0.15 && d < nearestDist) { nearestDist = d; nearestIdx = o.userData.index as number; }
+          }
+        });
+        idx = nearestIdx;
+      }
       if (idx !== null) {
         selectedIndexRef.current = idx;
         setSelectedIndex(idx);
@@ -636,16 +660,18 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
 
             if (results.gestures.length > 0) {
               const name = results.gestures[0][0].categoryName; const score = results.gestures[0][0].score;
-              if (score > 0.4) {
+              if (score > 0.5) {
                  if (name === "Open_Palm") { onGesture("CHAOS"); onLockRotation(false); }
                  if (name === "Closed_Fist") onGesture("FORMED");
                  if (debugMode) onStatus(`DETECTED: ${name}`);
-                 if (name === "Thumb_Up" && score > 0.6 && results.landmarks.length > 0) {
+                 if (name === "Pointing_Up" && score > 0.5 && results.landmarks.length > 0) {
                    const lm = results.landmarks[0];
-                   const thumb = lm[4];
-                   const ndcX = (1 - thumb.x) * 2 - 1;
-                   const ndcY = -(thumb.y * 2 - 1);
+                   const index = lm[8];
+                   const ndcX = (1 - index.x) * 2 - 1;
+                   const ndcY = -(index.y * 2 - 1);
                    onSelectThumb({ x: ndcX, y: ndcY });
+                 } else {
+                   onSelectThumb(null);
                  }
                  if (name === "Pointing_Up" && score > 0.6) {
                    onLockRotation(true);
@@ -668,7 +694,7 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
                 const dx = thumb.x - index.x; const dy = thumb.y - index.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 const active = dist < 0.05;
-                const ndcX = (1 - thumb.x) * 2 - 1; const ndcY = -(thumb.y * 2 - 1);
+                const ndcX = (1 - index.x) * 2 - 1; const ndcY = -(index.y * 2 - 1);
                 let palmAway = true;
                 // try world landmarks if available
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -682,7 +708,7 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
                 }
                 onPinchChange({ active, ndc: { x: ndcX, y: ndcY }, palmAway });
               }
-            } else { onMove(0); if (debugMode) onStatus("AI READY: NO HAND"); }
+            } else { onMove(0); onSelectThumb(null); if (debugMode) onStatus("AI READY: NO HAND"); }
         }
         requestRef = requestAnimationFrame(predictWebcam);
       }
