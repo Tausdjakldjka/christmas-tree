@@ -125,6 +125,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
 // --- Component: Photo Ornaments (Double-Sided Polaroid) ---
 const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'CHAOS' | 'FORMED', selectedIndex?: number | null, dragging?: boolean, dragPos?: THREE.Vector3 | null }) => {
+  const { camera } = useThree();
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
   const groupRef = useRef<THREE.Group>(null);
@@ -177,6 +178,7 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
       const isSelected = dragging && selectedIndex === i && dragPos;
       if (isSelected && dragPos) {
         group.position.lerp(dragPos, delta * 8);
+        group.lookAt(camera.position);
       } else {
         objData.currentPos.lerp(target, delta * (isFormed ? 0.8 * objData.weight : 0.5));
         group.position.copy(objData.currentPos);
@@ -193,9 +195,11 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
          group.rotation.z += wobbleZ;
 
       } else {
-         group.rotation.x += delta * objData.rotationSpeed.x;
-         group.rotation.y += delta * objData.rotationSpeed.y;
-         group.rotation.z += delta * objData.rotationSpeed.z;
+         if (!isSelected) {
+           group.rotation.x += delta * objData.rotationSpeed.x;
+           group.rotation.y += delta * objData.rotationSpeed.y;
+           group.rotation.z += delta * objData.rotationSpeed.z;
+         }
       }
     });
   });
@@ -432,7 +436,7 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Main Scene Experience ---
-const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive, pinchNdc }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null }) => {
+const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive, pinchNdc, palmAway }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null, palmAway?: boolean }) => {
   const controlsRef = useRef<any>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
   const dragPlaneRef = useRef(new THREE.Plane());
@@ -457,7 +461,12 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive,
     if (pinchActive && pinchNdc && selectedIndexRef.current !== null) {
       const raycaster = raycasterRef.current;
       raycaster.setFromCamera(new THREE.Vector2(pinchNdc.x, pinchNdc.y), camera);
-      const plane = dragPlaneRef.current;
+      let plane = dragPlaneRef.current;
+      if (palmAway) {
+        const f = camera.getWorldDirection(new THREE.Vector3());
+        const p = camera.position.clone().add(f.multiplyScalar(10));
+        plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), p);
+      }
       const hit = new THREE.Vector3();
       if (raycaster.ray.intersectPlane(plane, hit)) {
         dragPosRef.current.copy(hit);
@@ -637,7 +646,18 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 const active = dist < 0.05;
                 const ndcX = (1 - thumb.x) * 2 - 1; const ndcY = -(thumb.y * 2 - 1);
-                onPinchChange({ active, ndc: { x: ndcX, y: ndcY } });
+                let palmAway = true;
+                // try world landmarks if available
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const wlm: any = (results as any).worldLandmarks?.[0];
+                if (wlm) {
+                  const wrist = wlm[0];
+                  const indexMcp = wlm[5];
+                  const pinkyMcp = wlm[17];
+                  const centerZ = (indexMcp.z + pinkyMcp.z) / 2;
+                  palmAway = centerZ > wrist.z + 0.01;
+                }
+                onPinchChange({ active, ndc: { x: ndcX, y: ndcY }, palmAway });
               }
             } else { onMove(0); if (debugMode) onStatus("AI READY: NO HAND"); }
         }
@@ -666,15 +686,16 @@ export default function GrandTreeApp() {
   const [selectNdc, setSelectNdc] = useState<{ x: number, y: number } | null>(null);
   const [pinchActive, setPinchActive] = useState<boolean>(false);
   const [pinchNdc, setPinchNdc] = useState<{ x: number, y: number } | null>(null);
+  const [palmAway, setPalmAway] = useState<boolean>(false);
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <Canvas dpr={[1, 2]} gl={{ toneMapping: THREE.ReinhardToneMapping }} shadows>
-            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} />
+            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} />
         </Canvas>
       </div>
-      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc }: any) => { setPinchActive(active); setPinchNdc(ndc); }} onStatus={setAiStatus} debugMode={debugMode} />
+      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onStatus={setAiStatus} debugMode={debugMode} />
 
       {/* UI - Stats */}
       <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
