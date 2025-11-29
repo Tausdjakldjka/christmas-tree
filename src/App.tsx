@@ -17,7 +17,7 @@ import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
 
 // --- 动态生成照片列表 (top.jpg + 1.jpg 到 31.jpg) ---
-const TOTAL_NUMBERED_PHOTOS = 31;
+const TOTAL_NUMBERED_PHOTOS = 24;
 // 修改：将 top.jpg 加入到数组开头
 const bodyPhotoPaths = [
   '/photos/top.jpg',
@@ -38,14 +38,14 @@ const CONFIG = {
     // 拍立得边框颜色池 (复古柔和色系)
     borders: ['#FFFAF0', '#F0E68C', '#E6E6FA', '#FFB6C1', '#98FB98', '#87CEFA', '#FFDAB9'],
     // 圣诞元素颜色
-    giftColors: ['#D32F2F', '#FFD700', '#1976D2', '#2E7D32'],
+    giftColors: ['#FF1744', '#FFD700', '#448AFF', '#00E676', '#FF4081', '#7C4DFF'],
     candyColors: ['#FF0000', '#FFFFFF']
   },
   counts: {
     foliage: 15000,
-    ornaments: 300,   // 拍立得照片数量
-    elements: 200,    // 圣诞元素数量
-    lights: 400       // 彩灯数量
+    ornaments: 100,   // 拍立得照片数量
+    elements: 500,    // 圣诞元素数量
+    lights: 800       // 彩灯数量
   },
   tree: { height: 22, radius: 9 }, // 树体尺寸
   photos: {
@@ -126,7 +126,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 // --- Component: Photo Ornaments (Double-Sided Polaroid) ---
 const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'CHAOS' | 'FORMED', selectedIndex?: number | null, dragging?: boolean, dragPos?: THREE.Vector3 | null }) => {
   const { camera } = useThree();
-  const textures = useTexture(CONFIG.photos.body);
+  const textures = useSafeTextures(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
   const groupRef = useRef<THREE.Group>(null);
 
@@ -269,13 +269,16 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       else { color = Math.random() > 0.5 ? CONFIG.colors.red : CONFIG.colors.white; scale = 0.7 + Math.random() * 0.3; }
 
       const rotationSpeed = { x: (Math.random()-0.5)*2.0, y: (Math.random()-0.5)*2.0, z: (Math.random()-0.5)*2.0 };
-      return { type, chaosPos, targetPos, color, scale, currentPos: chaosPos.clone(), chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed };
+      const glowSpeed = 2 + Math.random() * 3;
+      const glowOffset = Math.random() * 100;
+      return { type, chaosPos, targetPos, color, scale, currentPos: chaosPos.clone(), chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed, glowSpeed, glowOffset };
     });
   }, [boxGeometry, sphereGeometry, caneGeometry]);
 
-  useFrame((_, delta) => {
+  useFrame((stateObj, delta) => {
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
+    const time = stateObj.clock.elapsedTime;
     groupRef.current.children.forEach((child, i) => {
       const mesh = child as THREE.Mesh;
       const objData = data[i];
@@ -283,6 +286,10 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       objData.currentPos.lerp(target, delta * 1.5);
       mesh.position.copy(objData.currentPos);
       mesh.rotation.x += delta * objData.rotationSpeed.x; mesh.rotation.y += delta * objData.rotationSpeed.y; mesh.rotation.z += delta * objData.rotationSpeed.z;
+      const base = isFormed ? 2.0 : 1.2;
+      const glow = base + (Math.sin(time * objData.glowSpeed + objData.glowOffset) + 1) * 0.6;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat) mat.emissiveIntensity = glow;
     });
   });
 
@@ -291,7 +298,7 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       {data.map((obj, i) => {
         let geometry; if (obj.type === 0) geometry = boxGeometry; else if (obj.type === 1) geometry = sphereGeometry; else geometry = caneGeometry;
         return ( <mesh key={i} scale={[obj.scale, obj.scale, obj.scale]} geometry={geometry} rotation={obj.chaosRotation}>
-          <meshStandardMaterial color={obj.color} roughness={0.3} metalness={0.4} emissive={obj.color} emissiveIntensity={0.2} />
+          <meshStandardMaterial color={obj.color} emissive={obj.color} emissiveIntensity={2.0} roughness={0.1} metalness={0.8} toneMapped={false} envMapIntensity={1.2} />
         </mesh> )})}
     </group>
   );
@@ -747,3 +754,22 @@ export default function GrandTreeApp() {
     </div>
   );
 }
+// --- Safe Texture Loader ---
+const WHITE_PNG_1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAoMBgXfYQnEAAAAASUVORK5CYII=';
+const useSafeTextures = (paths: string[]) => {
+  const [textures, setTextures] = useState<THREE.Texture[]>(() => paths.map(() => new THREE.TextureLoader().load(WHITE_PNG_1x1)));
+  useEffect(() => {
+    let mounted = true;
+    const loader = new THREE.TextureLoader();
+    paths.forEach((p, i) => {
+      loader.load(
+        p,
+        tex => { if (mounted) setTextures(prev => { const next = [...prev]; next[i] = tex; return next; }); },
+        undefined,
+        () => { /* keep placeholder on error */ }
+      );
+    });
+    return () => { mounted = false; };
+  }, [paths]);
+  return textures;
+};
