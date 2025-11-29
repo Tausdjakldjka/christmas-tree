@@ -2,18 +2,18 @@
 
 > 一个基于 **React**, **Three.js (R3F)** 和 **AI 手势识别** 的高保真 3D 圣诞树 Web 应用。
 
-这个项目不仅仅是一棵树，它是一个承载记忆的交互式画廊。成百上千个粒子、璀璨的彩灯和悬浮的拍立得照片共同组成了一棵奢华的圣诞树。用户可以通过手势控制树的形态（聚合/散开）和视角旋转，体验电影级的视觉盛宴。
+这个项目不仅仅是一棵树，它是一个承载记忆的交互式画廊。成千上万粒子、璀璨彩灯与悬浮拍立得共同组成一棵奢华的圣诞树。用户可通过手势控制树的形态（聚合/散开）、视角旋转、照片选择与拖拽，并支持双手缩放选中照片。
 
 ![Project Preview](public/preview.png)
 *(注：建议在此处上传一张你的项目运行截图)*
 
 ## ✨ 核心特性
 
-* **极致视觉体验**：由 45,000+ 个发光粒子组成的树身，配合动态光晕 (Bloom) 和辉光效果，营造梦幻氛围。
-* **记忆画廊**：照片以“拍立得”风格悬浮在树上，每一张都是一个独立的发光体，支持双面渲染。
-* **AI 手势控制**：无需鼠标，通过摄像头捕捉手势即可控制树的形态（聚合/散开）和视角旋转。
-* **丰富细节**：包含动态闪烁的彩灯、飘落的金银雪花、以及随机分布的圣诞礼物和糖果装饰。
-* **高度可定制**：**支持用户轻松替换为自己的照片，并自由调整照片数量。**
+* 极致视觉体验：加后期光晕 (Bloom) 与辉光，营造梦幻氛围
+* 记忆画廊：拍立得风格悬浮照片，双面渲染，底部随机“白色艺术英文字”并带写实阴影
+* AI 手势控制：无需鼠标，通过摄像头完成树形态、视角与相片交互
+* 双手协作：第一只手捏合拖移，第二只手捏合后用两手食指距离控制选中照片缩放（距离大→放大，距离小→缩小）
+* 可定制：支持替换照片、调整数量、切换圣诞元素风格（Classic/Neon/Metallic/Pastel/Candy）
 
 ## 🛠️ 技术栈
 
@@ -29,49 +29,126 @@
 确保你的电脑已安装 [Node.js](https://nodejs.org/) (建议 v18 或更高版本)。
 
 ### 2. 安装依赖
-在项目根目录下打开终端，运行：```bash npm install
+在项目根目录下打开终端，运行：
+```
+npm install
+```
 ### 3. 启动项目
+```
 npm run dev
+```
 ### 🖼️ 自定义照片
 ### 1. 准备照片
 找到项目目录下的 public/photos/ 文件夹。
 
-顶端大图/封面图：命名为 top.jpg（将显示在树顶的立体五角星上）。
+顶端封面图：命名为 `top.jpg`（树顶用于强调展示）
 
-树身照片：命名为 1.jpg, 2.jpg, 3.jpg ... 依次类推。
+树身照片：命名为 `1.jpg, 2.jpg, 3.jpg, ...` 依次类推
 
 建议：使用正方形或 4:3 比例的图片，文件大小不宜过大（建议单张 500kb 以内以保证流畅度）
 ### 2. 替换照片
-直接将你自己的照片复制到 public/photos/ 文件夹中，覆盖原有的图片即可。请保持文件名格式不变（1.jpg, 2.jpg 等）。
+直接把你的照片复制到 `public/photos/`，保持文件名格式不变（`1.jpg, 2.jpg, ...`）。
 ### 3. 修改照片数量 (增加或减少)
-如果你放入了更多照片（例如从默认的 31 张增加到 100 张），需要修改代码以通知程序加载它们。
-打开文件：src/App.tsx
-找到大约 第 19 行 的代码：// --- 动态生成照片列表 (top.jpg + 1.jpg 到 31.jpg) ---
-const TOTAL_NUMBERED_PHOTOS = 31; // <--- 修改这个数字！
-### 🖐️ 手势控制说明
-* **本项目内置了 AI 手势识别系统，请站在摄像头前进行操作（屏幕右下角有 DEBUG 按钮可查看摄像头画面）**：
-🖐 张开手掌 (Open Palm)	Disperse (散开)	圣诞树炸裂成漫天飞舞的粒子和照片
-✊ 握紧拳头 (Closed Fist)	Assemble (聚合)	所有元素瞬间聚合成一棵完美的圣诞树
-👋 手掌左右移动	水平旋转	手向左移，树向左转；手向右移，树向右转
-👋 手掌上下移动	俯仰视角	已实现：根据手部 y 坐标映射相机极角（Polar Angle），抬高手→视角抬高；降低手→视角降低（含平滑与 0.02 死区）
-👍 拇指上举 (Thumb Up)	选中照片	拇指指尖指向并选中最近的照片
-🤏 食指-拇指捏合 (Pinch)	拖移照片	捏合后可在屏幕平面上拖移选中的照片（含平滑与迟滞阈值）
-✌️ 中指与拇指成 V（Victory）	锁定相机	屏幕固定，不发生任何旋转（禁用 autoRotate 与相机更新）
-* 参数位置：参见 `src/App.tsx` 中 `GestureController` 与 `Experience` 的相关实现，可调捏合阈值、平滑强度与拖拽平面法线。
-* 俯仰范围：`minPolarAngle ≈ 0.4` 到 `maxPolarAngle ≈ π/1.7`，可在 `src/App.tsx` 中调整
+如果你放入了更多照片（例如从默认的 24 张增加到 100 张），需要修改代码以通知程序加载它们。
+打开文件：`src/App.tsx:20`
+将 `TOTAL_NUMBERED_PHOTOS` 修改为你实际放入的图片数量
+说明：若有缺图，应用启用“安全纹理加载”，会以白色占位图替代，防止白屏
+### 🖐️ 手势与交互
+- Open Palm：散开树体与元素
+- Closed Fist：聚合树体，并取消当前照片选中
+- 水平移动：控制旋转速度
+- 垂直移动：控制相机俯仰（带平滑与死区）
+- Pointing Up（食指向上）：以食指指尖为光标，在屏幕上显示光标并就近选中照片
+- Pinch（食指+拇指捏合）：
+  - 第一只手：拖移已选照片（屏幕平面，带平滑）
+  - 第二只手：若捏合激活，按两手食指之间的距离缩放选中照片（距离大→放大，距离小→缩小，范围约 1×–3×）
+- Victory/Pointing Up：锁定旋转
+说明：调参位置在 `src/App.tsx` 的 `GestureController` 与 `Experience`，可调整捏合阈值、平滑强度、拖拽平面法线与近邻选取半径。
 ### ⚙️ 进阶配置
-* **如果你熟悉代码，可以在 src/App.tsx 中的 CONFIG 对象里调整更多视觉参数**：
-  const CONFIG = {
-  colors: { ... }, // 修改树、灯光、边框的颜色
-  counts: {
-    foliage: 15000,   // 修改树叶粒子数量 (配置低可能会卡)
-    ornaments: 300,   // 修改悬挂的照片/拍立得数量
-    lights: 400       // 修改彩灯数量
-  },
-  tree: { height: 22, radius: 9 }, // 修改树的大小
-  // ...
-};
+- 视觉参数：`src/App.tsx` 中的 `CONFIG`
+  - `counts.foliage` 树叶粒子数量
+  - `counts.ornaments` 照片数量（与 `TOTAL_NUMBERED_PHOTOS` 搭配）
+  - `counts.lights` 彩灯数量
+  - `tree.height/radius` 树体尺寸
+- 圣诞元素风格切换：右下角 `🛠 DEBUG` 按钮旁的风格按钮（Classic/Neon/Metallic/Pastel/Candy）
+- 照片标题：拍立得边框底部随机“白色艺术英文字”，带写实阴影
 ### 📄 License
 MIT License. Feel free to use and modify for your own holiday celebrations!
+
 ### Merry Christmas! 🎄✨
 
+# Optimized Prompt (English Version)
+
+## Role Definition
+
+You are a senior 3D interactive experience engineer and art director,
+highly proficient in **React (v19), TypeScript, Three.js, and React
+Three Fiber (R3F)**. You specialize in building high-fidelity, visually
+artistic Web 3D experiences.
+
+## Project Goal
+
+Build a premium 3D interactive web project: \### "Arix Signature
+Interactive Christmas Tree"
+
+Art direction & visual identity: - Mood: extravagant, luxurious, golden
+opulence with a refined sense of elegance\
+- Primary palette: **deep emerald green + high-gloss metallic gold**\
+- Effects: cinematic bloom, glare, lens flare, and soft halo lighting
+
+# I. Core Interaction & State Design
+
+## 1. State Machine (TreeMorphState)
+
+Design a global interaction state machine with at least two major
+states:
+
+-   **SCATTERED**\
+    All particles and ornaments float and drift randomly in 3D space,
+    creating a sense of controlled chaos.
+
+-   **TREE_SHAPE**\
+    All elements converge and form a structured Christmas-tree-shaped
+    cone.
+
+Requirements: - Smooth transitions between states (interpolation, easing
+curves, timeline control)\
+- The motion should evoke an "attractive force" pulling elements into
+the tree shape
+
+## 2. Dual Position System
+
+Each element (foliage particle or ornament instance) must be initialized
+with two coordinate sets:
+
+-   **scatterPosition**: randomly distributed within a spherical radius\
+-   **treePosition**: precomputed position sampled on the tree cone's
+    surface or volume
+
+Requirements: - Transitions should interpolate between scatterPosition ↔
+treePosition\
+- Motion should feel organic, smooth, and rhythmic
+
+# II. Tree Structure & Ornament System
+
+## 1. Foliage Layer
+
+Use **THREE.Points with custom ShaderMaterial** to render dense foliage
+particles that define the tree's silhouette.
+
+Particles should support: - Subtle jitter / breathing motion\
+- Bloom-enhanced or Fresnel-based rim highlights\
+- Deep green base color with a hint of gold or warm white glow on the
+edges
+
+## 2. Ornament System
+
+Use **InstancedMesh** for performance. Ornament categories:
+
+-   **Heavy ornaments**: gift boxes (larger, more saturated colors)\
+-   **Light ornaments**: metallic reflective spheres\
+-   **Ultra-light ornaments**: light dots, stars, or glow particles
+
+Each category should have different "motion weights": - Different
+floating amplitudes in SCATTERED state\
+- Different convergence speeds in TREE_SHAPE state

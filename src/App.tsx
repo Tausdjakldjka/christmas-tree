@@ -125,7 +125,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Component: Photo Ornaments (Double-Sided Polaroid) ---
-const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'CHAOS' | 'FORMED', selectedIndex?: number | null, dragging?: boolean, dragPos?: THREE.Vector3 | null }) => {
+const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos, zoomFactor }: { state: 'CHAOS' | 'FORMED', selectedIndex?: number | null, dragging?: boolean, dragPos?: THREE.Vector3 | null, zoomFactor?: number }) => {
   const { camera } = useThree();
   const textures = useSafeTextures(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -215,7 +215,7 @@ const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'C
   return (
     <group ref={groupRef}>
       {data.map((obj, i) => (
-        <group key={i} scale={[obj.scale, obj.scale, obj.scale]} rotation={state === 'CHAOS' ? obj.chaosRotation : [0,0,0]} userData={{ type: 'photo', index: i }}>
+        <group key={i} scale={[obj.scale * (selectedIndex === i && zoomFactor ? zoomFactor : 1), obj.scale * (selectedIndex === i && zoomFactor ? zoomFactor : 1), obj.scale * (selectedIndex === i && zoomFactor ? zoomFactor : 1)]} rotation={state === 'CHAOS' ? obj.chaosRotation : [0,0,0]} userData={{ type: 'photo', index: i }}>
           {/* 正面 */}
           <group position={[0, 0, 0.015]}>
             <mesh geometry={photoGeometry}>
@@ -453,7 +453,7 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Main Scene Experience ---
-const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectNdc, pinchActive, pinchNdc, palmAway }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, rotationLocked: boolean, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null, palmAway?: boolean }) => {
+const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectNdc, pinchActive, pinchNdc, palmAway, zoomFactor }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, rotationLocked: boolean, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null, palmAway?: boolean, zoomFactor?: number }) => {
   const controlsRef = useRef<any>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
   const dragPlaneRef = useRef(new THREE.Plane());
@@ -586,7 +586,7 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectN
       <group position={[0, -3, 0]}>
         <Foliage state={sceneState} />
         <Suspense fallback={null}>
-           <PhotoOrnaments state={sceneState} selectedIndex={selectedIndex ?? undefined} dragging={pinchActive} dragPos={dragPos ?? undefined} />
+           <PhotoOrnaments state={sceneState} selectedIndex={selectedIndex ?? undefined} dragging={pinchActive} dragPos={dragPos ?? undefined} zoomFactor={zoomFactor} />
            <ChristmasElements state={sceneState} />
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
@@ -605,7 +605,7 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectN
 
 // --- Gesture Controller ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchChange, onLockRotation, onStatus, debugMode }: any) => {
+const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchChange, onLockRotation, onStatus, onZoom, debugMode }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -624,7 +624,7 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
             delegate: "GPU"
           },
           runningMode: "VIDEO",
-          numHands: 1
+          numHands: 2
         });
         onStatus("REQUESTING CAMERA...");
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -707,8 +707,25 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
                   palmAway = centerZ > wrist.z + 0.01;
                 }
                 onPinchChange({ active, ndc: { x: ndcX, y: ndcY }, palmAway });
+                if (results.landmarks.length > 1) {
+                  const lm1 = results.landmarks[0];
+                  const lm2 = results.landmarks[1];
+                  const t2 = lm2[4]; const i2 = lm2[8];
+                  const pinch2 = Math.hypot(t2.x - i2.x, t2.y - i2.y) < 0.05;
+                  if (pinch2) {
+                    const i1 = lm1[8];
+                    const dx = i1.x - i2.x; const dy = i1.y - i2.y;
+                    const d = Math.sqrt(dx*dx + dy*dy);
+                    const zoom = Math.max(1, Math.min(3, d * 6));
+                    onZoom(zoom);
+                  } else {
+                    onZoom(1);
+                  }
+                } else {
+                  onZoom(1);
+                }
               }
-            } else { onMove(0); onSelectThumb(null); if (debugMode) onStatus("AI READY: NO HAND"); }
+            } else { onMove(0); onSelectThumb(null); onZoom(1); if (debugMode) onStatus("AI READY: NO HAND"); }
         }
         requestRef = requestAnimationFrame(predictWebcam);
       }
@@ -737,15 +754,16 @@ export default function GrandTreeApp() {
   const [pinchNdc, setPinchNdc] = useState<{ x: number, y: number } | null>(null);
   const [palmAway, setPalmAway] = useState<boolean>(false);
   const [rotationLocked, setRotationLocked] = useState<boolean>(false);
+  const [zoom, setZoom] = useState<number>(1);
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <Canvas dpr={[1, 2]} gl={{ toneMapping: THREE.ReinhardToneMapping }} shadows>
-            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} rotationLocked={rotationLocked} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} />
+            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} rotationLocked={rotationLocked} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} zoomFactor={zoom} />
         </Canvas>
       </div>
-      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} debugMode={debugMode} />
+      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} onZoom={(z: number) => setZoom(z ?? 1)} debugMode={debugMode} />
 
       
 
