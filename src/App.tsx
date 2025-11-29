@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
-import { Canvas, useFrame, extend } from '@react-three/fiber';
+import { Canvas, useFrame, extend, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
   Environment,
@@ -124,7 +124,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Component: Photo Ornaments (Double-Sided Polaroid) ---
-const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
+const PhotoOrnaments = ({ state, selectedIndex, dragging, dragPos }: { state: 'CHAOS' | 'FORMED', selectedIndex?: number | null, dragging?: boolean, dragPos?: THREE.Vector3 | null }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
   const groupRef = useRef<THREE.Group>(null);
@@ -174,11 +174,16 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
     groupRef.current.children.forEach((group, i) => {
       const objData = data[i];
       const target = isFormed ? objData.targetPos : objData.chaosPos;
-
-      objData.currentPos.lerp(target, delta * (isFormed ? 0.8 * objData.weight : 0.5));
-      group.position.copy(objData.currentPos);
+      const isSelected = dragging && selectedIndex === i && dragPos;
+      if (isSelected && dragPos) {
+        group.position.lerp(dragPos, delta * 8);
+      } else {
+        objData.currentPos.lerp(target, delta * (isFormed ? 0.8 * objData.weight : 0.5));
+        group.position.copy(objData.currentPos);
+      }
 
       if (isFormed) {
+         if (isSelected) return;
          const targetLookPos = new THREE.Vector3(group.position.x * 2, group.position.y + 0.5, group.position.z * 2);
          group.lookAt(targetLookPos);
 
@@ -198,14 +203,14 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   return (
     <group ref={groupRef}>
       {data.map((obj, i) => (
-        <group key={i} scale={[obj.scale, obj.scale, obj.scale]} rotation={state === 'CHAOS' ? obj.chaosRotation : [0,0,0]}>
+        <group key={i} scale={[obj.scale, obj.scale, obj.scale]} rotation={state === 'CHAOS' ? obj.chaosRotation : [0,0,0]} userData={{ type: 'photo', index: i }}>
           {/* 正面 */}
           <group position={[0, 0, 0.015]}>
             <mesh geometry={photoGeometry}>
               <meshStandardMaterial
                 map={textures[obj.textureIndex]}
                 roughness={0.5} metalness={0}
-                emissive={CONFIG.colors.white} emissiveMap={textures[obj.textureIndex]} emissiveIntensity={1.0}
+                emissive={CONFIG.colors.white} emissiveMap={textures[obj.textureIndex]} emissiveIntensity={selectedIndex === i ? 1.6 : 1.0}
                 side={THREE.FrontSide}
               />
             </mesh>
@@ -219,7 +224,7 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
               <meshStandardMaterial
                 map={textures[obj.textureIndex]}
                 roughness={0.5} metalness={0}
-                emissive={CONFIG.colors.white} emissiveMap={textures[obj.textureIndex]} emissiveIntensity={1.0}
+                emissive={CONFIG.colors.white} emissiveMap={textures[obj.textureIndex]} emissiveIntensity={selectedIndex === i ? 1.6 : 1.0}
                 side={THREE.FrontSide}
               />
             </mesh>
@@ -330,6 +335,53 @@ const FairyLights = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
+const TreeRoot = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const rootDownLength = 60;
+  const rootCurve = useMemo(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, -rootDownLength, 0),
+  ], false, 'catmullrom', 0.5), []);
+  const rootGeometry = useMemo(() => new THREE.TubeGeometry(rootCurve, 90, 0.7, 24, false), [rootCurve]);
+
+  const makeRibbonCurve = (angleOffset: number) => {
+    const points: THREE.Vector3[] = [];
+    const turns = 20;
+    const radius = 0.95;
+    const segments = 600;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const angle = turns * 2 * Math.PI * t + angleOffset;
+      const y = -rootDownLength * t;
+      points.push(new THREE.Vector3(radius * Math.cos(angle), y, radius * Math.sin(angle)));
+    }
+    return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+  };
+  const ribbonCurveA = useMemo(() => makeRibbonCurve(0), []);
+  const ribbonCurveB = useMemo(() => makeRibbonCurve(Math.PI), []);
+  const ribbonGeometryA = useMemo(() => new THREE.TubeGeometry(ribbonCurveA, 600, 0.06, 16, false), [ribbonCurveA]);
+  const ribbonGeometryB = useMemo(() => new THREE.TubeGeometry(ribbonCurveB, 600, 0.06, 16, false), [ribbonCurveB]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    const t = state === 'FORMED' ? 1 : 1;
+    groupRef.current.scale.lerp(new THREE.Vector3(t, t, t), delta * 3);
+  });
+  return (
+    <group ref={groupRef} position={[0, -CONFIG.tree.height / 2 - 1.5, 0]}>
+      <mesh geometry={rootGeometry}>
+        <meshStandardMaterial color={CONFIG.colors.red} emissive={CONFIG.colors.red} emissiveIntensity={0.5} roughness={0.6} metalness={0.2} />
+      </mesh>
+      <mesh geometry={ribbonGeometryA}>
+        <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
+      </mesh>
+      <mesh geometry={ribbonGeometryB}>
+        <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+};
+
 // --- Component: Top Star (No Photo, Pure Gold 3D Star) ---
 const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   const groupRef = useRef<THREE.Group>(null);
@@ -380,19 +432,98 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Main Scene Experience ---
-const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number }) => {
+const Experience = ({ sceneState, rotationSpeed, pitchY, selectNdc, pinchActive, pinchNdc }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number, pitchY: number, selectNdc?: { x: number, y: number } | null, pinchActive?: boolean, pinchNdc?: { x: number, y: number } | null }) => {
   const controlsRef = useRef<any>(null);
-  useFrame(() => {
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const dragPlaneRef = useRef(new THREE.Plane());
+  const selectedIndexRef = useRef<number | null>(null);
+  const dragPosRef = useRef(new THREE.Vector3());
+  const { camera, scene } = useThree();
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [dragPos, setDragPos] = useState<THREE.Vector3 | null>(null);
+  const prevPinchActiveRef = useRef<boolean>(false);
+  useFrame((_, delta) => {
     if (controlsRef.current) {
+      const minPhi = 0.4;
+      const maxPhi = Math.PI / 1.7;
+      const currentPhi = controlsRef.current.getPolarAngle();
+      const targetPhi = Math.min(maxPhi, Math.max(minPhi, minPhi + pitchY * (maxPhi - minPhi)));
+      const smoothPhi = MathUtils.damp(currentPhi, targetPhi, 3, delta);
+
       controlsRef.current.setAzimuthalAngle(controlsRef.current.getAzimuthalAngle() + rotationSpeed);
+      controlsRef.current.setPolarAngle(smoothPhi);
       controlsRef.current.update();
     }
+    if (pinchActive && pinchNdc && selectedIndexRef.current !== null) {
+      const raycaster = raycasterRef.current;
+      raycaster.setFromCamera(new THREE.Vector2(pinchNdc.x, pinchNdc.y), camera);
+      const plane = dragPlaneRef.current;
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        dragPosRef.current.copy(hit);
+        setDragPos(hit.clone());
+      }
+    }
   });
+
+  useEffect(() => {
+    if (selectNdc) {
+      const raycaster = raycasterRef.current;
+      const ndc = new THREE.Vector2(selectNdc.x, selectNdc.y);
+      raycaster.setFromCamera(ndc, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      let idx: number | null = null;
+      for (const it of intersects) {
+        let obj: THREE.Object3D | null = it.object;
+        while (obj && !obj.userData?.type) obj = obj.parent as THREE.Object3D | null;
+        if (obj && obj.userData?.type === 'photo') { idx = obj.userData.index as number; break; }
+      }
+      if (idx !== null) {
+        selectedIndexRef.current = idx;
+        setSelectedIndex(idx);
+        const planeNormal = camera.getWorldDirection(new THREE.Vector3()).clone();
+        const planePoint = itToWorldOfPhoto(idx, scene);
+        dragPlaneRef.current.setFromNormalAndCoplanarPoint(planeNormal, planePoint);
+      }
+    }
+  }, [selectNdc, camera, scene]);
+
+  useEffect(() => {
+    const prev = prevPinchActiveRef.current;
+    if (!prev && pinchActive && pinchNdc && selectedIndexRef.current === null) {
+      const raycaster = raycasterRef.current;
+      const ndc = new THREE.Vector2(pinchNdc.x, pinchNdc.y);
+      raycaster.setFromCamera(ndc, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      for (const it of intersects) {
+        let obj: THREE.Object3D | null = it.object;
+        while (obj && !obj.userData?.type) obj = obj.parent as THREE.Object3D | null;
+        if (obj && obj.userData?.type === 'photo') {
+          const idx = obj.userData.index as number;
+          selectedIndexRef.current = idx;
+          setSelectedIndex(idx);
+          const planeNormal = camera.getWorldDirection(new THREE.Vector3()).clone();
+          const planePoint = itToWorldOfPhoto(idx, scene);
+          dragPlaneRef.current.setFromNormalAndCoplanarPoint(planeNormal, planePoint);
+          break;
+        }
+      }
+    }
+    prevPinchActiveRef.current = !!pinchActive;
+  }, [pinchActive, pinchNdc, camera, scene]);
+
+  const itToWorldOfPhoto = (idx: number, scn: THREE.Scene) => {
+    const objs: THREE.Object3D[] = [];
+    scn.traverse(o => { if (o.userData?.type === 'photo' && o.userData.index === idx) objs.push(o); });
+    const target = objs[0] as THREE.Object3D;
+    const p = new THREE.Vector3();
+    return target ? target.getWorldPosition(p) : new THREE.Vector3();
+  };
 
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 8, 60]} fov={45} />
-      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} maxPolarAngle={Math.PI / 1.7} />
+      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} minPolarAngle={0.4} maxPolarAngle={Math.PI / 1.7} />
 
       <color attach="background" args={['#000300']} />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
@@ -403,14 +534,15 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
       <pointLight position={[-30, 10, -30]} intensity={50} color={CONFIG.colors.gold} />
       <pointLight position={[0, -20, 10]} intensity={30} color="#ffffff" />
 
-      <group position={[0, -6, 0]}>
+      <group position={[0, -3, 0]}>
         <Foliage state={sceneState} />
         <Suspense fallback={null}>
-           <PhotoOrnaments state={sceneState} />
+           <PhotoOrnaments state={sceneState} selectedIndex={selectedIndex ?? undefined} dragging={pinchActive} dragPos={dragPos ?? undefined} />
            <ChristmasElements state={sceneState} />
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
         </Suspense>
+        <TreeRoot state={sceneState} />
         <Sparkles count={600} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
       </group>
 
@@ -424,13 +556,14 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
 
 // --- Gesture Controller ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GestureController = ({ onGesture, onMove, onStatus, debugMode }: any) => {
+const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchChange, onStatus, debugMode }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     let gestureRecognizer: GestureRecognizer;
     let requestRef: number;
+    let prevY = 0.5;
 
     const setup = async () => {
       onStatus("DOWNLOADING AI...");
@@ -481,10 +614,30 @@ const GestureController = ({ onGesture, onMove, onStatus, debugMode }: any) => {
               if (score > 0.4) {
                  if (name === "Open_Palm") onGesture("CHAOS"); if (name === "Closed_Fist") onGesture("FORMED");
                  if (debugMode) onStatus(`DETECTED: ${name}`);
+                 if ((name === "Thumb_Up" || name === "Pointing_Up") && score > 0.6 && results.landmarks.length > 0) {
+                   const lm = results.landmarks[0];
+                   const thumb = lm[4];
+                   const ndcX = (1 - thumb.x) * 2 - 1;
+                   const ndcY = -(thumb.y * 2 - 1);
+                   onSelectThumb({ x: ndcX, y: ndcY });
+                 }
               }
               if (results.landmarks.length > 0) {
                 const speed = (0.5 - results.landmarks[0][0].x) * 0.15;
                 onMove(Math.abs(speed) > 0.01 ? speed : 0);
+                const y = results.landmarks[0][0].y;
+                if (Math.abs(y - prevY) > 0.02) {
+                  prevY = Math.min(1, Math.max(0, y));
+                  onPitch(prevY);
+                }
+                const lm = results.landmarks[0];
+                const thumb = lm[4];
+                const index = lm[8];
+                const dx = thumb.x - index.x; const dy = thumb.y - index.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const active = dist < 0.05;
+                const ndcX = (1 - thumb.x) * 2 - 1; const ndcY = -(thumb.y * 2 - 1);
+                onPinchChange({ active, ndc: { x: ndcX, y: ndcY } });
               }
             } else { onMove(0); if (debugMode) onStatus("AI READY: NO HAND"); }
         }
@@ -509,15 +662,19 @@ export default function GrandTreeApp() {
   const [rotationSpeed, setRotationSpeed] = useState(0);
   const [aiStatus, setAiStatus] = useState("INITIALIZING...");
   const [debugMode, setDebugMode] = useState(false);
+  const [pitchY, setPitchY] = useState(0.5);
+  const [selectNdc, setSelectNdc] = useState<{ x: number, y: number } | null>(null);
+  const [pinchActive, setPinchActive] = useState<boolean>(false);
+  const [pinchNdc, setPinchNdc] = useState<{ x: number, y: number } | null>(null);
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <Canvas dpr={[1, 2]} gl={{ toneMapping: THREE.ReinhardToneMapping }} shadows>
-            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} />
+            <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} />
         </Canvas>
       </div>
-      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onStatus={setAiStatus} debugMode={debugMode} />
+      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc }: any) => { setPinchActive(active); setPinchNdc(ndc); }} onStatus={setAiStatus} debugMode={debugMode} />
 
       {/* UI - Stats */}
       <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
