@@ -522,6 +522,14 @@ const Experience = ({ sceneState, rotationSpeed, pitchY, rotationLocked, selectN
     prevPinchActiveRef.current = !!pinchActive;
   }, [pinchActive, pinchNdc, camera, scene]);
 
+  useEffect(() => {
+    if (sceneState === 'FORMED') {
+      selectedIndexRef.current = null;
+      setSelectedIndex(null);
+      setDragPos(null);
+    }
+  }, [sceneState]);
+
   const itToWorldOfPhoto = (idx: number, scn: THREE.Scene) => {
     const objs: THREE.Object3D[] = [];
     scn.traverse(o => { if (o.userData?.type === 'photo' && o.userData.index === idx) objs.push(o); });
