@@ -43,8 +43,8 @@ const CONFIG = {
     candyColors: ['#FF0000', '#FFFFFF']
   },
   counts: {
-    foliage: 115000,
-    ornaments: 100,   // 拍立得照片数量
+    foliage: 15000,
+    ornaments: 200,   // 拍立得照片数量
     elements: 500,    // 圣诞元素数量
     lights: 800       // 彩灯数量
   },
@@ -747,21 +747,7 @@ export default function GrandTreeApp() {
       </div>
       <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} debugMode={debugMode} />
 
-      {/* UI - Stats */}
-      <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
-        <div style={{ marginBottom: '15px' }}>
-          <p style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Memories</p>
-          <p style={{ fontSize: '24px', color: '#FFD700', fontWeight: 'bold', margin: 0 }}>
-            {CONFIG.counts.ornaments.toLocaleString()} <span style={{ fontSize: '10px', color: '#555', fontWeight: 'normal' }}>POLAROIDS</span>
-          </p>
-        </div>
-        <div>
-          <p style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Foliage</p>
-          <p style={{ fontSize: '24px', color: '#004225', fontWeight: 'bold', margin: 0 }}>
-            {(CONFIG.counts.foliage / 1000).toFixed(0)}K <span style={{ fontSize: '10px', color: '#555', fontWeight: 'normal' }}>EMERALD NEEDLES</span>
-          </p>
-        </div>
-      </div>
+      
 
       {/* UI - Buttons */}
       <div style={{ position: 'absolute', bottom: '30px', right: '40px', zIndex: 10, display: 'flex', gap: '10px' }}>
