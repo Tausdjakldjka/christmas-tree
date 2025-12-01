@@ -628,15 +628,39 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
         });
         onStatus("REQUESTING CAMERA...");
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play();
-            onStatus("AI READY: SHOW HAND");
-            predictWebcam();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream as MediaStream;
+              videoRef.current.muted = true;
+              // @ts-expect-error playsInline may not exist on type
+              videoRef.current.playsInline = true;
+              const start = async () => {
+                try {
+                  await videoRef.current!.play();
+                  onStatus("AI READY: SHOW HAND");
+                  predictWebcam();
+                } catch {
+                  onStatus("ERROR: AUTOPLAY BLOCKED");
+                }
+              };
+              if (videoRef.current.readyState >= 2) {
+                start();
+              } else {
+                videoRef.current.onloadedmetadata = () => start();
+              }
+            }
+          } catch (camErr: any) {
+            if (camErr?.name === "NotAllowedError" || camErr?.name === "PermissionDeniedError") {
+              onStatus("ERROR: CAMERA NOT ALLOWED");
+            } else if (camErr?.name === "NotFoundError") {
+              onStatus("ERROR: NO CAMERA");
+            } else {
+              onStatus("ERROR: CAMERA FAILED");
+            }
           }
         } else {
-            onStatus("ERROR: CAMERA PERMISSION DENIED");
+          onStatus("ERROR: CAMERA API UNAVAILABLE");
         }
       } catch (err: any) {
         onStatus(`ERROR: ${err.message || 'MODEL FAILED'}`);
