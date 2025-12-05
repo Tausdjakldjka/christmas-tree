@@ -8,7 +8,3 @@ compatibility_date = "2025-12-05"
 [assets]
 directory = "./dist"
 
-# 路由配置 - 支持 SPA 路由
-[[routes]]
-pattern = "/*"
-
