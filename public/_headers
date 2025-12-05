@@ -1,0 +1,43 @@
+# Cloudflare Pages 自定义 Headers
+# 优化性能和安全性
+
+/*
+  # 启用 CORS（如果需要跨域访问）
+  Access-Control-Allow-Origin: *
+  
+  # 安全头
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # 性能优化
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML 文件 - 不缓存
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# JavaScript 和 CSS - 长期缓存
+/assets/*.js
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/javascript; charset=utf-8
+
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: text/css; charset=utf-8
+
+# 图片资源 - 长期缓存
+/photos/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/jpeg
+
+/photos/*.png
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/png
+
+# WASM 文件（MediaPipe）
+/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/wasm
+

@@ -1,0 +1,14 @@
+# Wrangler 配置文件 - Christmas Tree 项目
+# 用于 Cloudflare Pages 部署
+
+name = "christmas-tree"
+compatibility_date = "2025-12-05"
+
+# 静态资源目录配置
+[assets]
+directory = "./dist"
+
+# 路由配置 - 支持 SPA 路由
+[[routes]]
+pattern = "/*"
+
