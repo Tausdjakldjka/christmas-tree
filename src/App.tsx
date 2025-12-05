@@ -8,7 +8,6 @@ import {
   Float,
   Stars,
   Sparkles,
-  useTexture,
   Text
 } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -356,52 +355,53 @@ const FairyLights = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-const TreeRoot = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
-  const groupRef = useRef<THREE.Group>(null);
-  const rootDownLength = 60;
-  const rootCurve = useMemo(() => new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, -rootDownLength, 0),
-  ], false, 'catmullrom', 0.5), []);
-  const rootGeometry = useMemo(() => new THREE.TubeGeometry(rootCurve, 90, 0.7, 24, false), [rootCurve]);
-
-  const makeRibbonCurve = (angleOffset: number) => {
-    const points: THREE.Vector3[] = [];
-    const turns = 20;
-    const radius = 0.95;
-    const segments = 600;
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      const angle = turns * 2 * Math.PI * t + angleOffset;
-      const y = -rootDownLength * t;
-      points.push(new THREE.Vector3(radius * Math.cos(angle), y, radius * Math.sin(angle)));
-    }
-    return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
-  };
-  const ribbonCurveA = useMemo(() => makeRibbonCurve(0), []);
-  const ribbonCurveB = useMemo(() => makeRibbonCurve(Math.PI), []);
-  const ribbonGeometryA = useMemo(() => new THREE.TubeGeometry(ribbonCurveA, 600, 0.06, 16, false), [ribbonCurveA]);
-  const ribbonGeometryB = useMemo(() => new THREE.TubeGeometry(ribbonCurveB, 600, 0.06, 16, false), [ribbonCurveB]);
-
-  useFrame((_, delta) => {
-    if (!groupRef.current) return;
-    const t = state === 'FORMED' ? 1 : 1;
-    groupRef.current.scale.lerp(new THREE.Vector3(t, t, t), delta * 3);
-  });
-  return (
-    <group ref={groupRef} position={[0, -CONFIG.tree.height / 2 - 1.5, 0]}>
-      <mesh geometry={rootGeometry}>
-        <meshStandardMaterial color={CONFIG.colors.red} emissive={CONFIG.colors.red} emissiveIntensity={0.5} roughness={0.6} metalness={0.2} />
-      </mesh>
-      <mesh geometry={ribbonGeometryA}>
-        <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
-      </mesh>
-      <mesh geometry={ribbonGeometryB}>
-        <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
-      </mesh>
-    </group>
-  );
-};
+// TreeRoot 组件已禁用，如需启用请取消注释
+// const TreeRoot = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
+//   const groupRef = useRef<THREE.Group>(null);
+//   const rootDownLength = 60;
+//   const rootCurve = useMemo(() => new THREE.CatmullRomCurve3([
+//     new THREE.Vector3(0, 0, 0),
+//     new THREE.Vector3(0, -rootDownLength, 0),
+//   ], false, 'catmullrom', 0.5), []);
+//   const rootGeometry = useMemo(() => new THREE.TubeGeometry(rootCurve, 90, 0.7, 24, false), [rootCurve]);
+//
+//   const makeRibbonCurve = (angleOffset: number) => {
+//     const points: THREE.Vector3[] = [];
+//     const turns = 20;
+//     const radius = 0.95;
+//     const segments = 600;
+//     for (let i = 0; i <= segments; i++) {
+//       const t = i / segments;
+//       const angle = turns * 2 * Math.PI * t + angleOffset;
+//       const y = -rootDownLength * t;
+//       points.push(new THREE.Vector3(radius * Math.cos(angle), y, radius * Math.sin(angle)));
+//     }
+//     return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+//   };
+//   const ribbonCurveA = useMemo(() => makeRibbonCurve(0), []);
+//   const ribbonCurveB = useMemo(() => makeRibbonCurve(Math.PI), []);
+//   const ribbonGeometryA = useMemo(() => new THREE.TubeGeometry(ribbonCurveA, 600, 0.06, 16, false), [ribbonCurveA]);
+//   const ribbonGeometryB = useMemo(() => new THREE.TubeGeometry(ribbonCurveB, 600, 0.06, 16, false), [ribbonCurveB]);
+//
+//   useFrame((_, delta) => {
+//     if (!groupRef.current) return;
+//     const t = state === 'FORMED' ? 1 : 1;
+//     groupRef.current.scale.lerp(new THREE.Vector3(t, t, t), delta * 3);
+//   });
+//   return (
+//     <group ref={groupRef} position={[0, -CONFIG.tree.height / 2 - 1.5, 0]}>
+//       <mesh geometry={rootGeometry}>
+//         <meshStandardMaterial color={CONFIG.colors.red} emissive={CONFIG.colors.red} emissiveIntensity={0.5} roughness={0.6} metalness={0.2} />
+//       </mesh>
+//       <mesh geometry={ribbonGeometryA}>
+//         <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
+//       </mesh>
+//       <mesh geometry={ribbonGeometryB}>
+//         <meshStandardMaterial color={CONFIG.colors.white} emissive={CONFIG.colors.white} emissiveIntensity={1.3} roughness={0.35} metalness={0.1} toneMapped={false} />
+//       </mesh>
+//     </group>
+//   );
+// };
 
 // --- Component: Top Star (No Photo, Pure Gold 3D Star) ---
 const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
@@ -633,7 +633,6 @@ const GestureController = ({ onGesture, onMove, onPitch, onSelectThumb, onPinchC
             if (videoRef.current) {
               videoRef.current.srcObject = stream as MediaStream;
               videoRef.current.muted = true;
-              // @ts-expect-error playsInline may not exist on type
               videoRef.current.playsInline = true;
               const start = async () => {
                 try {
@@ -779,32 +778,234 @@ export default function GrandTreeApp() {
   const [palmAway, setPalmAway] = useState<boolean>(false);
   const [rotationLocked, setRotationLocked] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(1);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showMobileTip, setShowMobileTip] = useState<boolean>(true);
+
+  // 检测移动设备
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // 移动端提示自动消失
+  useEffect(() => {
+    if (isMobile && showMobileTip) {
+      const timer = setTimeout(() => {
+        setShowMobileTip(false);
+      }, 5000); // 5秒后自动消失
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, showMobileTip]);
+
+  // 移动端触摸手势控制
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+    let touchStartTime = 0;
+    let isSwiping = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        lastTouchX = touchStartX;
+        lastTouchY = touchStartY;
+        touchStartTime = Date.now();
+        isSwiping = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const deltaX = e.touches[0].clientX - lastTouchX;
+        const deltaY = e.touches[0].clientY - lastTouchY;
+        
+        // 横向滑动控制旋转
+        if (Math.abs(deltaX) > 5) {
+          isSwiping = true;
+          setRotationSpeed(deltaX * 0.01);
+        }
+
+        // 纵向滑动控制俯仰
+        if (Math.abs(deltaY) > 5) {
+          isSwiping = true;
+          const newPitch = Math.max(0, Math.min(1, pitchY - deltaY * 0.003));
+          setPitchY(newPitch);
+        }
+
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      setRotationSpeed(0);
+      
+      // 双击切换状态
+      if (!isSwiping && e.changedTouches.length === 1) {
+        const touchDuration = Date.now() - touchStartTime;
+        if (touchDuration < 300) {
+          const timeSinceLastTap = Date.now() - (window as any).lastTapTime;
+          if (timeSinceLastTap < 300) {
+            setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS');
+          }
+          (window as any).lastTapTime = Date.now();
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isMobile, pitchY]);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      backgroundColor: '#000', 
+      position: 'relative', 
+      overflow: 'hidden',
+      touchAction: 'none',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      WebkitTouchCallout: 'none'
+    }}>
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
-        <Canvas dpr={[1, 2]} gl={{ toneMapping: THREE.ReinhardToneMapping }} shadows>
+        <Canvas 
+          dpr={isMobile ? [1, 1.5] : [1, 2]} 
+          gl={{ 
+            toneMapping: THREE.ReinhardToneMapping,
+            antialias: !isMobile,
+            powerPreference: isMobile ? 'low-power' : 'high-performance'
+          }} 
+          shadows={!isMobile}
+        >
             <Experience sceneState={sceneState} rotationSpeed={rotationSpeed} pitchY={pitchY} rotationLocked={rotationLocked} selectNdc={selectNdc} pinchActive={pinchActive} pinchNdc={pinchNdc} palmAway={palmAway} zoomFactor={zoom} />
         </Canvas>
       </div>
-      <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} onZoom={(z: number) => setZoom(z ?? 1)} debugMode={debugMode} />
+      {!isMobile && <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onPitch={setPitchY} onSelectThumb={setSelectNdc} onPinchChange={({ active, ndc, palmAway }: any) => { setPinchActive(active); setPinchNdc(ndc); setPalmAway(!!palmAway); }} onLockRotation={setRotationLocked} onStatus={setAiStatus} onZoom={(z: number) => setZoom(z ?? 1)} debugMode={debugMode} />}
 
       
 
       {/* UI - Buttons */}
-      <div style={{ position: 'absolute', bottom: '30px', right: '40px', zIndex: 10, display: 'flex', gap: '10px' }}>
-        <button onClick={() => setDebugMode(!debugMode)} style={{ padding: '12px 15px', backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: debugMode ? '#000' : '#FFD700', fontFamily: 'sans-serif', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
-           {debugMode ? 'HIDE DEBUG' : '🛠 DEBUG'}
+      <div style={{ 
+        position: 'absolute', 
+        bottom: isMobile ? '20px' : '30px', 
+        right: isMobile ? '20px' : '40px', 
+        left: isMobile ? '20px' : 'auto',
+        zIndex: 10, 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: '10px',
+        alignItems: isMobile ? 'stretch' : 'flex-end'
+      }}>
+        <button 
+          onClick={() => setDebugMode(!debugMode)} 
+          style={{ 
+            padding: isMobile ? '16px 20px' : '12px 15px', 
+            backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', 
+            border: '1px solid #FFD700', 
+            color: debugMode ? '#000' : '#FFD700', 
+            fontFamily: 'sans-serif', 
+            fontSize: isMobile ? '14px' : '12px', 
+            fontWeight: 'bold', 
+            cursor: 'pointer', 
+            backdropFilter: 'blur(4px)',
+            borderRadius: '8px',
+            touchAction: 'manipulation'
+          }}
+        >
+          {debugMode ? 'HIDE DEBUG' : '🛠 DEBUG'}
         </button>
-        <button onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} style={{ padding: '12px 30px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255, 215, 0, 0.5)', color: '#FFD700', fontFamily: 'serif', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
-           {sceneState === 'CHAOS' ? 'Assemble Tree' : 'Disperse'}
+        <button 
+          onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} 
+          style={{ 
+            padding: isMobile ? '16px 30px' : '12px 30px', 
+            backgroundColor: 'rgba(0,0,0,0.5)', 
+            border: '1px solid rgba(255, 215, 0, 0.5)', 
+            color: '#FFD700', 
+            fontFamily: 'serif', 
+            fontSize: isMobile ? '16px' : '14px', 
+            fontWeight: 'bold', 
+            letterSpacing: '3px', 
+            textTransform: 'uppercase', 
+            cursor: 'pointer', 
+            backdropFilter: 'blur(4px)',
+            borderRadius: '8px',
+            touchAction: 'manipulation'
+          }}
+        >
+          {sceneState === 'CHAOS' ? 'Assemble Tree' : 'Disperse'}
         </button>
       </div>
 
       {/* UI - AI Status */}
-      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
-        {aiStatus}
+      <div style={{ 
+        position: 'absolute', 
+        top: isMobile ? '10px' : '20px', 
+        left: '50%', 
+        transform: 'translateX(-50%)', 
+        color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', 
+        fontSize: isMobile ? '9px' : '10px', 
+        letterSpacing: '2px', 
+        zIndex: 10, 
+        background: 'rgba(0,0,0,0.5)', 
+        padding: isMobile ? '6px 12px' : '4px 8px', 
+        borderRadius: '4px',
+        maxWidth: isMobile ? '90%' : 'auto',
+        textAlign: 'center'
+      }}>
+        {isMobile ? '👆 滑动旋转 | 双击切换状态' : aiStatus}
       </div>
+
+      {/* 移动端操作提示 (首次访问显示，5秒后自动消失) */}
+      {isMobile && showMobileTip && (
+        <div 
+          onClick={() => setShowMobileTip(false)}
+          style={{
+            position: 'absolute',
+            bottom: '140px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(0,0,0,0.8)',
+            color: '#FFD700',
+            padding: '16px 24px',
+            borderRadius: '12px',
+            fontSize: '13px',
+            textAlign: 'center',
+            zIndex: 10,
+            border: '1px solid rgba(255, 215, 0, 0.3)',
+            maxWidth: '80%',
+            lineHeight: '1.6',
+            cursor: 'pointer',
+            animation: 'fadeIn 0.5s ease-in',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div style={{ marginBottom: '8px', fontSize: '16px' }}>🎄 操作指南 🎄</div>
+          <div>• 左右滑动：旋转视角</div>
+          <div>• 上下滑动：调整高度</div>
+          <div>• 双击屏幕：切换状态</div>
+          <div>• 双指缩放：放大缩小</div>
+          <div style={{ marginTop: '8px', fontSize: '11px', opacity: 0.6 }}>点击关闭</div>
+        </div>
+      )}
     </div>
   );
 }
