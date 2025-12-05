@@ -1,6 +1,0 @@
-# Cloudflare Pages SPA 重定向规则
-# 确保所有路由都指向 index.html
-
-# SPA 路由 - 所有非文件请求返回 index.html
-/*    /index.html   200
-
